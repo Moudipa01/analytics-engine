@@ -53,4 +53,9 @@ export class AnalyticsController {
       endDate,
     });
   }
+
+  @Get('user-stats')
+  async getUserStats(@Query('userId') userId: string) {
+    return this.analyticsService.getUserStats(userId);
+  }
 }
