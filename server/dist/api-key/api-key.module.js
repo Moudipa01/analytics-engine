@@ -6,21 +6,19 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppModule = void 0;
+exports.ApiKeyModule = void 0;
 const common_1 = require("@nestjs/common");
-const app_controller_1 = require("./app.controller");
-const app_service_1 = require("./app.service");
-const api_key_module_1 = require("./api-key/api-key.module");
-const prisma_module_1 = require("./prisma/prisma.module");
-const analytics_module_1 = require("./analytics/analytics.module");
-let AppModule = class AppModule {
+const api_key_service_1 = require("./api-key.service");
+const api_key_controller_1 = require("./api-key.controller");
+const prisma_module_1 = require("../prisma/prisma.module");
+let ApiKeyModule = class ApiKeyModule {
 };
-exports.AppModule = AppModule;
-exports.AppModule = AppModule = __decorate([
+exports.ApiKeyModule = ApiKeyModule;
+exports.ApiKeyModule = ApiKeyModule = __decorate([
     (0, common_1.Module)({
-        imports: [api_key_module_1.ApiKeyModule, prisma_module_1.PrismaModule, analytics_module_1.AnalyticsModule],
-        controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        imports: [prisma_module_1.PrismaModule],
+        controllers: [api_key_controller_1.ApiKeyController],
+        providers: [api_key_service_1.ApiKeyService],
     })
-], AppModule);
-//# sourceMappingURL=app.module.js.map
+], ApiKeyModule);
+//# sourceMappingURL=api-key.module.js.map
