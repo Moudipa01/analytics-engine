@@ -34,7 +34,6 @@ export class ApiKeyGuard implements CanActivate {
     for (const dbKey of allKeys) {
       const isMatch = await bcrypt.compare(apiKeyHeader, dbKey.keyHash);
       if (isMatch) {
-        // Attach the matching app to the request
         (request as any).appInfo = dbKey.app;
         return true;
       }

@@ -5,7 +5,6 @@ import { ApiKeyService } from './api-key.service';
 export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
-  // POST /api-key/register - Register and issue an API key
   @Post('register')
   async register(
     @Body('appName') appName: string,
