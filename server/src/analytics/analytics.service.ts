@@ -21,8 +21,9 @@ export class AnalyticsService {
   /**
    * Store a single analytics event.
    */
-  async storeEvent(dto: CollectDto, appId: string) {
-    return this.prisma.event.create({
+  async storeEvent(dto: CollectDto, appId: string): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    await this.prisma.event.create({
       data: {
         appId,
         event: dto.event,
@@ -32,26 +33,32 @@ export class AnalyticsService {
         ipAddress: dto.ipAddress,
         timestamp: new Date(dto.timestamp),
         metadata: dto.metadata ?? {},
+        userId: dto.userId ?? null,
       },
     });
   }
-
   /**
    * Public-facing event summary with 60s cache.
    */
-  async getEventSummary({
-    appId,
-    event,
-    startDate,
-    endDate,
-  }: {
+  async getEventSummary(params: {
     appId: string;
     event: string;
     startDate?: string;
     endDate?: string;
-  }) {
+  }): Promise<{
+    event: string;
+    count: number;
+    uniqueUsers: number;
+    deviceData: Record<string, number>;
+  }> {
+    const { appId, event, startDate, endDate } = params;
     const cacheKey = `summary:${event}:${appId}:${startDate ?? 'null'}:${endDate ?? 'null'}`;
-    const cached = await this.cacheManager.get(cacheKey);
+    const cached = await this.cacheManager.get<{
+      event: string;
+      count: number;
+      uniqueUsers: number;
+      deviceData: Record<string, number>;
+    }>(cacheKey);
     if (cached) return cached;
 
     const summary = await this.buildSummary({
@@ -64,47 +71,55 @@ export class AnalyticsService {
     return summary;
   }
 
-  private async buildSummary({
-    appId,
-    event,
-    startDate,
-    endDate,
-  }: {
+  private async buildSummary(params: {
     appId: string;
     event: string;
     startDate?: string;
     endDate?: string;
-  }) {
+  }): Promise<{
+    event: string;
+    count: number;
+    uniqueUsers: number;
+    deviceData: Record<string, number>;
+  }> {
+    const { appId, event, startDate, endDate } = params;
+
     const where: Prisma.EventWhereInput = {
       appId,
       event,
+      timestamp:
+        startDate || endDate
+          ? {
+              ...(startDate ? { gte: new Date(startDate) } : {}),
+              ...(endDate ? { lte: new Date(endDate) } : {}),
+            }
+          : undefined,
     };
 
-    if (startDate || endDate) {
-      where.timestamp = {};
-      if (startDate) {
-        where.timestamp.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.timestamp.lte = new Date(endDate);
-      }
-    }
-
-    const [totalCount, uniqueUsersList, deviceCounts] = await Promise.all([
+    const results = await Promise.all([
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
       this.prisma.event.count({ where }),
-
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.prisma.event.findMany({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         where,
         distinct: ['userId'],
         select: { userId: true },
       }),
-
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.prisma.event.groupBy({
         by: ['device'],
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         where,
         _count: { device: true },
       }),
     ]);
+    const totalCount = results[0] as number;
+    const uniqueUsersList = results[1] as Array<{ userId: string | null }>;
+    const deviceCounts = results[2] as Array<{
+      device: string | null;
+      _count: { device: number };
+    }>;
 
     const deviceData: Record<string, number> = {};
     deviceCounts.forEach((entry) => {
@@ -120,28 +135,44 @@ export class AnalyticsService {
     };
   }
 
-  async getUserStats(userId: string) {
+  async getUserStats(userId: string): Promise<{
+    userId: string;
+    totalEvents: number;
+    deviceDetails: {
+      browser?: string;
+      os?: string;
+    };
+    ipAddress?: string;
+    recentEvents: any[];
+  }> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const events = await this.prisma.event.findMany({
       where: { userId },
       orderBy: { timestamp: 'desc' },
       take: 10,
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const totalEvents = await this.prisma.event.count({
       where: { userId },
     });
 
-    const last = events[0] ?? {};
-    const metadata = last.metadata as EventMetadata | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const last = events[0];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    const metadata = (last?.metadata ?? undefined) as EventMetadata | undefined;
 
     return {
       userId,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       totalEvents,
       deviceDetails: {
         browser: metadata?.browser,
         os: metadata?.os,
       },
-      ipAddress: last.ipAddress,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      ipAddress: last?.ipAddress ?? undefined,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       recentEvents: events,
     };
   }

@@ -42,4 +42,8 @@ export class CollectDto {
   })
   @IsOptional()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsString()
+  userId?: string;
 }

@@ -1,10 +1,11 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { CacheInterceptor } from '@nestjs/cache-manager';
+import { Reflector, HttpAdapterHost } from '@nestjs/core';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
+import { GlobalCacheInterceptor } from './common/interceptors/global-cache.interceptor';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import { RateLimitGuard } from './common/guards/rate-limit.guard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -27,11 +28,15 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const cacheManager = app.get<Cache>(CACHE_MANAGER);
+  const cacheManager: Cache = app.get(CACHE_MANAGER);
+  const httpAdapterHost = app.get(HttpAdapterHost);
   const reflector = app.get(Reflector);
-  app.useGlobalInterceptors(new CacheInterceptor(cacheManager, reflector));
 
-  const rateLimitGuard: RateLimitGuard = app.get(RateLimitGuard); // ✅ Fix: Add explicit type
+  app.useGlobalInterceptors(
+    new GlobalCacheInterceptor(cacheManager, httpAdapterHost, reflector),
+  );
+
+  const rateLimitGuard: RateLimitGuard = app.get(RateLimitGuard);
   app.useGlobalGuards(rateLimitGuard);
 
   await app.listen(3000);

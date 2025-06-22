@@ -18,6 +18,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "moduleResolution": "node",
-    "types": ["node"]
-  }
+    "types": ["node", "@prisma/client" ]
+  },
+  "include": ["src", "node_modules/@prisma/client"]
 }
